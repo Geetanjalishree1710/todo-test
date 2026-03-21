@@ -1,39 +1,60 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getSupabaseClient } from '@/lib/supabase'
 
 export default function Home() {
+  const supabase = useMemo(() => getSupabaseClient(), [])
   const [todos, setTodos] = useState([])
   const [title, setTitle] = useState('')
 
   const fetchTodos = useCallback(async () => {
+    if (!supabase) return
+
     const { data } = await supabase
       .from('todos')
       .select('*')
     setTodos(data || [])
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
+    if (!supabase) return
+
     // Initial client-side data load from Supabase.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTodos()
-  }, [fetchTodos])
+  }, [fetchTodos, supabase])
 
   async function addTodo() {
-    if (!title) return
+    if (!supabase || !title.trim()) return
+
     await supabase
       .from('todos')
-      .insert({ title })
+      .insert({ title: title.trim() })
     setTitle('')
     fetchTodos()
   }
 
   async function toggleTodo(id, is_complete) {
+    if (!supabase) return
+
     await supabase
       .from('todos')
       .update({ is_complete: !is_complete })
       .eq('id', id)
     fetchTodos()
+  }
+
+  if (!supabase) {
+    return (
+      <div className="p-8 max-w-md mx-auto">
+        <h1 className="text-2xl font-bold mb-4">Todo List</h1>
+        <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
+          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in Vercel project
+          environment variables to enable the app.
+        </div>
+      </div>
+    )
   }
 
   return (
